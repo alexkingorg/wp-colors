@@ -1,4 +1,9 @@
-# CF Colors
+# WP Colors
+
+## Version 2.2
+
+- (fix) use `wp_get_theme()` instead of `get_current_theme()`
+- (change) forked and updated by Alex King for use in theme
 
 ## Version 2.1
 
