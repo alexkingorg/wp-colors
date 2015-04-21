@@ -36,7 +36,7 @@ function cf_colors_admin_init() {
 	if (!empty($_GET['page']) && $_GET['page'] == basename(__FILE__)) {
 		add_action('admin_head', 'cf_colors_admin_css');
 		
-		$plugin_dir = trailingslashit(get_template_directory_uri()).'plugins/'.basename(__FILE__, '.php');
+		$plugin_dir = trailingslashit(get_template_directory_uri()).'plugins/'.basename(__DIR__);
 		
 		// colorpicker version is the last entry date from the changelog since it doesn't appear to have a version defined
 		wp_enqueue_script('jquery-colorpicker', $plugin_dir.'/js/colorpicker/js/colorpicker.js', array('jquery'), '20090523');
@@ -45,7 +45,7 @@ function cf_colors_admin_init() {
 		// our js
 		$css_preview_template = sprintf(cf_colors_admin_preview_css_template(), '-0-', '-1-', '-2-', '-3-', '-4-');
 		$css_preview_template = preg_replace("/[\n|\t]/", '', $css_preview_template);
-		wp_enqueue_script('cf-colors', $plugin_dir.'/js/cf-colors.js', array('jquery', 'colorpicker', 'jquery-ui-sortable'), CF_KULER_VERSION);
+		wp_enqueue_script('cf-colors', $plugin_dir.'/js/cf-colors.js', array('jquery', 'colorpicker', 'jquery-ui-sortable'), CF_COLORS_VERSION);
 		$loading = __('Loading...', 'cf-colors'); // have to assign here because PHP 5.2 stinks
 		wp_localize_script('cf-colors', 'cf_colors_settings', array(
 			'preview_css_template' => $css_preview_template,
@@ -57,7 +57,7 @@ add_action('admin_init', 'cf_colors_admin_init');
 
 /* Let's load some styles that will be used on all theme setting pages */
 function cf_colors_admin_css() {
-    $cfcp_admin_styles = get_template_directory_uri().'/plugins/cf-colors/css/admin.css';
+    $cfcp_admin_styles = get_template_directory_uri().'/plugins/wp-colors/css/admin.css';
     echo '<link rel="stylesheet" type="text/css" href="' . $cfcp_admin_styles . '" />';
 	echo cf_colors_admin_preview_css();
 }
@@ -245,7 +245,7 @@ function cf_colors_api_request($url) {
 	$themes = array();
 	foreach ($items as $item) {
 		$theme = array(
-			'id' => $id,
+			'id' => $item->id,
 			'guid' => $item->id,
 			'link' => $item->url,
 			'title' => $item->title,
@@ -485,15 +485,18 @@ function cf_colors_admin_bar() {
 add_action('wp_before_admin_bar_render', 'cf_colors_admin_bar');
 
 function cf_colors_theme_fields($theme) {
-	return '
+	$html = '
 	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[id]" value="'.$theme['id'].'" /> 
 	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[guid]" value="'.$theme['guid'].'" /> 
 	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[link]" value="'.$theme['link'].'" /> 
 	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[title]" value="'.$theme['title'].'" /> 
 	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[author]" value="'.$theme['author'].'" /> 
-	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[author_id]" value="'.$theme['author_id'].'" /> 
 	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[image]" value="'.$theme['image'].'" /> 
 	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[swatches]" value="'.(is_array($theme['swatches']) ? implode(',', $theme['swatches']) : $theme['swatches']).'" />';
+	if (isset($theme['author_id'])) {
+		$html .= '<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[author_id]" value="'.$theme['author_id'].'" /> ';
+	}
+	return $html;
 }
 
 function cf_colors_color_picker($colors_html) {
@@ -519,6 +522,9 @@ function cf_colors_color_picker($colors_html) {
 function cf_colors_settings_form() {
 	if ($settings = cf_colors_get_settings()) {
 		$colors = $settings['colors'];
+		if (is_array($colors)) {
+			$colors = implode(',', $colors);
+		};
 		$colors_html = cf_colors_colors_html($settings);
 	}
 	else {

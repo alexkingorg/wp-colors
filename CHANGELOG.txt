@@ -3,6 +3,7 @@
 ## Version 2.2
 
 - (fix) use `wp_get_theme()` instead of `get_current_theme()`
+- (fix) address various PHP notices
 - (change) forked and updated by Alex King for use in theme
 
 ## Version 2.1
