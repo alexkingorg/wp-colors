@@ -1,16 +1,18 @@
 <?php
 
 /*
-Plugin Name: CF Colors
+Plugin Name: WP Colors
 Description: Selection of color swatches from ColourLovers.
-Version: 2.1
-Author: Crowd Favorite
-Author URI: http://crowdfavorite.com
+Version: 2.2
+Author: Alex King
+Author URI: http://alexking.org
 */
 
 /**
  * Copyright (c) 2010-2013 Crowd Favorite, Ltd. All rights reserved.
  * http://crowdfavorite.com
+ *
+ * Copyright (c) 2015 Alex King.
  *
  * Released under GPL v2
  * http://opensource.org/licenses/GPL-2.0
@@ -447,7 +449,7 @@ function cf_colors_request_handler() {
 				$theme = array_map('stripslashes', $_POST['cf_colors_theme']);
 				update_option(CF_COLORS, compact('colors', 'theme'));
 				// let the cache plugins know that something changed
-				$theme = get_current_theme();
+				$theme = wp_get_theme()->get('Name');
 				do_action( 'switch_theme', $theme );
 				// done
 				wp_redirect(admin_url('themes.php?page='.basename(__FILE__).'&updated=true'));
