@@ -3,7 +3,7 @@
 /*
 Plugin Name: WP Colors
 Description: Selection of color swatches from ColourLovers.
-Version: 2.2
+Version: 2.3
 Author: Alex King
 Author URI: http://alexking.org
 */
@@ -20,7 +20,7 @@ Author URI: http://alexking.org
  * **********************************************************************
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * **********************************************************************
  */
 
@@ -30,18 +30,18 @@ Author URI: http://alexking.org
 
 if (!function_exists('cf_colors_admin_init')) { // loaded and API key check
 
-@define('CF_COLORS_VERSION', '2.1');
+@define('CF_COLORS_VERSION', '2.3');
 
 function cf_colors_admin_init() {
 	if (!empty($_GET['page']) && $_GET['page'] == basename(__FILE__)) {
 		add_action('admin_head', 'cf_colors_admin_css');
-		
+
 		$plugin_dir = trailingslashit(get_template_directory_uri()).'plugins/'.basename(__DIR__);
-		
+
 		// colorpicker version is the last entry date from the changelog since it doesn't appear to have a version defined
 		wp_enqueue_script('jquery-colorpicker', $plugin_dir.'/js/colorpicker/js/colorpicker.js', array('jquery'), '20090523');
 		wp_enqueue_style('jquery-colorpicker', $plugin_dir.'/js/colorpicker/css/colorpicker.css', array(), '20090523', 'screen');
-		
+
 		// our js
 		$css_preview_template = sprintf(cf_colors_admin_preview_css_template(), '-0-', '-1-', '-2-', '-3-', '-4-');
 		$css_preview_template = preg_replace("/[\n|\t]/", '', $css_preview_template);
@@ -50,7 +50,7 @@ function cf_colors_admin_init() {
 		wp_localize_script('cf-colors', 'cf_colors_settings', array(
 			'preview_css_template' => $css_preview_template,
 			'loading' => $loading
-		));	
+		));
 	}
 }
 add_action('admin_init', 'cf_colors_admin_init');
@@ -76,7 +76,7 @@ function cf_colors_admin_preview_css() {
 function cf_colors_admin_preview_css_template() {
 	return '
 		<style type="text/css" media="screen" title="kuler-preview-css">
-			.cf-kuler-preview-header, 
+			.cf-kuler-preview-header,
 			.cf-kuler-preview-featured {
 				background-color: %s;
 			}
@@ -211,7 +211,7 @@ function cf_colors_api_get($listType = 'rating', $resultOffset = 0, $numResults 
 		case 'random':
 			$url = 'http://www.colourlovers.com/api/patterns/random';
 			break;
-			
+
 	}
 	$params = compact('resultOffset', 'numResults');
 	return cf_colors_api_request($url.'?'.http_build_query($params, null, '&'));
@@ -224,42 +224,40 @@ function cf_colors_api_search($keywords, $resultOffset = 0, $numResults = 20) {
 }
 
 function cf_colors_api_request($url) {
+	$max_tries = 10;
 	$url .= '&format=json';
 
-// using this results in a 403 Forbidden response. Why? No idea.
-// 	$response = wp_remote_get($url, array(
-// 		'timeout' => 20,
-// 		'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:20.0) Gecko/20100101 Firefox/20.0'
-// 	));
+	for ($i = 0; $i < $max_tries; $i++) {
+		$response = wp_remote_get($url, array(
+			'timeout' => 20,
+			'user-agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:20.0) Gecko/20100101 Firefox/20.0'
+		));
 
-// using CURL directly instead
-	$curl = curl_init();
-	curl_setopt($curl, CURLOPT_URL, $url);
-	curl_setopt($curl, CURLOPT_HEADER, false);
-	curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-	$response = curl_exec($curl);
-	curl_close($curl);
-	
-	$items = json_decode($response);
+		$items = json_decode($response['body']);
 
-	$themes = array();
-	foreach ($items as $item) {
-		$theme = array(
-			'id' => $item->id,
-			'guid' => $item->id,
-			'link' => $item->url,
-			'title' => $item->title,
-			'url' => $item->url,
-			'image' => $item->imageUrl,
-			'swatches' => $item->colors,
-			'author' => $item->userName,
-		);
-		$theme['swatches'] = cf_sort_hex_colors($theme['swatches']);
-		if (count($theme['swatches']) == 5) {
-			$themes[cf_colors_theme_hash($theme)] = $theme;
+		$themes = array();
+		foreach ($items as $item) {
+			$theme = array(
+				'id' => $item->id,
+				'guid' => $item->id,
+				'link' => $item->url,
+				'title' => $item->title,
+				'url' => $item->url,
+				'image' => $item->imageUrl,
+				'swatches' => $item->colors,
+				'author' => $item->userName,
+			);
+			$theme['swatches'] = cf_sort_hex_colors($theme['swatches']);
+			if (count($theme['swatches']) == 5) {
+				$themes[cf_colors_theme_hash($theme)] = $theme;
+			}
+		}
+		$numResults = count($themes);
+		if ($numResults) {
+			// if we have any results, no more API calls
+			$i = $max_tries;
 		}
 	}
-	$numResults = count($themes);
 	return compact('themes', 'found', 'numResults');
 }
 
@@ -357,15 +355,15 @@ function cf_colors_admin_ajax() {
 	switch ($api_request_type) {
 		case 'get':
 			$result = cf_colors_api_get(
-				$params['listType'], 
-				$params['startIndex'], 
+				$params['listType'],
+				$params['startIndex'],
 				$params['itemsPerPage']
 			);
 			break;
 		case 'search':
 			$result = cf_colors_api_search(
-				$params['searchQuery'], 
-				$params['startIndex'], 
+				$params['searchQuery'],
+				$params['startIndex'],
 				$params['itemsPerPage']
 			);
 			break;
@@ -382,7 +380,7 @@ function cf_colors_admin_ajax() {
 		$prev_page = '<a href="#cf-colors-tabs" class="cf-kuler-paging prev" data-request="'.esc_attr($api_request_type).'" data-listtype="'.esc_attr($params['listType']).'" data-search="'.esc_attr($params['searchQuery']).'" data-start="'.esc_attr($params['startIndex'] - $params['itemsPerPage']).'" data-items="'.esc_attr($params['itemsPerPage']).'">&laquo; '.__('Previous', 'cf-colors').'</a>';
 	}
 	$next_page = '<a href="#cf-colors-tabs" class="cf-kuler-paging next" data-request="'.esc_attr($api_request_type).'" data-listtype="'.esc_attr($params['listType']).'" data-search="'.esc_attr($params['searchQuery']).'" data-start="'.esc_attr($params['startIndex'] + $params['itemsPerPage']).'" data-items="'.esc_attr($params['itemsPerPage']).'">'.__('Next', 'cf-colors').' &raquo;</a>';
-	
+
 	if ($params['listType'] == 'random') {
 		$html .= '
 			<div class="cf-kuler-pagination">
@@ -424,12 +422,12 @@ add_action('wp_ajax_cf_colors_preview_css', 'cf_colors_admin_preview_css_ajax');
  * Will ignore any passed in fields that contain more data than a full HEX color definition
  * so hacking will return a weird color set, but won't damage anything
  *
- * @param array $colors 
+ * @param array $colors
  * @return array
  */
 function cf_colors_ajax_filter($colors) {
 	if (!empty($_POST['cf_colors_colors'])) {
-		$_colors = explode(',', $_POST['cf_colors_colors']);		
+		$_colors = explode(',', $_POST['cf_colors_colors']);
 		array_map('trim', $_colors);
 		foreach ($_colors as $k => $color) {
 			if (preg_match('/^#[a-z0-9]{6}$/i', $color)) {
@@ -486,12 +484,12 @@ add_action('wp_before_admin_bar_render', 'cf_colors_admin_bar');
 
 function cf_colors_theme_fields($theme) {
 	$html = '
-	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[id]" value="'.$theme['id'].'" /> 
-	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[guid]" value="'.$theme['guid'].'" /> 
-	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[link]" value="'.$theme['link'].'" /> 
-	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[title]" value="'.$theme['title'].'" /> 
-	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[author]" value="'.$theme['author'].'" /> 
-	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[image]" value="'.$theme['image'].'" /> 
+	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[id]" value="'.$theme['id'].'" />
+	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[guid]" value="'.$theme['guid'].'" />
+	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[link]" value="'.$theme['link'].'" />
+	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[title]" value="'.$theme['title'].'" />
+	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[author]" value="'.$theme['author'].'" />
+	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[image]" value="'.$theme['image'].'" />
 	<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[swatches]" value="'.(is_array($theme['swatches']) ? implode(',', $theme['swatches']) : $theme['swatches']).'" />';
 	if (isset($theme['author_id'])) {
 		$html .= '<input class="cf-kuler-theme-data" type="hidden" name="cf_colors_theme[author_id]" value="'.$theme['author_id'].'" /> ';
@@ -536,7 +534,7 @@ function cf_colors_settings_form() {
 	if (!empty($_GET['updated']) && $_GET['updated'] == true) {
 		$message = '<div class="updated below-h2 fade cf-kuler-message-fade" id="message"><p>'.__('Settings updated.', 'cf-colors').'</p></div>';
 	}
-		
+
 	print('
 <div class="wrap cf-kuler-wrap cf-clearfix">
 	'.screen_icon().'
@@ -612,7 +610,7 @@ function cf_colors_settings_form() {
 					<div class="cf-kuler-preview-widget"></div>
 				</div>
 				<div class="cf-kuler-preview-footer"></div>
-			</div><!--.cf-kuler-preview-page-->		
+			</div><!--.cf-kuler-preview-page-->
 		</div><!--.cfp-popover-content-->
 	</div><!--.cfp-popover-inner-->
 </div><!--#cf-kuler-preview-->
