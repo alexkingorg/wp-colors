@@ -3,7 +3,7 @@
 /*
 Plugin Name: WP Colors
 Description: Selection of color swatches from ColourLovers.
-Version: 2.2
+Version: 2.3
 Author: Alex King
 Author URI: http://alexking.org
 */
@@ -30,7 +30,7 @@ Author URI: http://alexking.org
 
 if (!function_exists('cf_colors_admin_init')) { // loaded and API key check
 
-@define('CF_COLORS_VERSION', '2.1');
+@define('CF_COLORS_VERSION', '2.3');
 
 function cf_colors_admin_init() {
 	if (!empty($_GET['page']) && $_GET['page'] == basename(__FILE__)) {
@@ -224,42 +224,40 @@ function cf_colors_api_search($keywords, $resultOffset = 0, $numResults = 20) {
 }
 
 function cf_colors_api_request($url) {
+	$max_tries = 10;
 	$url .= '&format=json';
 
-// using this results in a 403 Forbidden response. Why? No idea.
-// 	$response = wp_remote_get($url, array(
-// 		'timeout' => 20,
-// 		'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:20.0) Gecko/20100101 Firefox/20.0'
-// 	));
+	for ($i = 0; $i < $max_tries; $i++) {
+		$response = wp_remote_get($url, array(
+			'timeout' => 20,
+			'user-agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:20.0) Gecko/20100101 Firefox/20.0'
+		));
 
-// using CURL directly instead
-	$curl = curl_init();
-	curl_setopt($curl, CURLOPT_URL, $url);
-	curl_setopt($curl, CURLOPT_HEADER, false);
-	curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-	$response = curl_exec($curl);
-	curl_close($curl);
-	
-	$items = json_decode($response);
+		$items = json_decode($response['body']);
 
-	$themes = array();
-	foreach ($items as $item) {
-		$theme = array(
-			'id' => $item->id,
-			'guid' => $item->id,
-			'link' => $item->url,
-			'title' => $item->title,
-			'url' => $item->url,
-			'image' => $item->imageUrl,
-			'swatches' => $item->colors,
-			'author' => $item->userName,
-		);
-		$theme['swatches'] = cf_sort_hex_colors($theme['swatches']);
-		if (count($theme['swatches']) == 5) {
-			$themes[cf_colors_theme_hash($theme)] = $theme;
+		$themes = array();
+		foreach ($items as $item) {
+			$theme = array(
+				'id' => $item->id,
+				'guid' => $item->id,
+				'link' => $item->url,
+				'title' => $item->title,
+				'url' => $item->url,
+				'image' => $item->imageUrl,
+				'swatches' => $item->colors,
+				'author' => $item->userName,
+			);
+			$theme['swatches'] = cf_sort_hex_colors($theme['swatches']);
+			if (count($theme['swatches']) == 5) {
+				$themes[cf_colors_theme_hash($theme)] = $theme;
+			}
+		}
+		$numResults = count($themes);
+		if ($numResults) {
+			// if we have any results, no more API calls
+			$i = $max_tries;
 		}
 	}
-	$numResults = count($themes);
 	return compact('themes', 'found', 'numResults');
 }
 

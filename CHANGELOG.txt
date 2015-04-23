@@ -1,5 +1,10 @@
 # WP Colors
 
+## Version 2.3
+
+- (fix) better chance of showing a swatch on Random tab
+- (change) use `wp_remote_get()` instead of direct CURL call
+
 ## Version 2.2
 
 - (fix) use `wp_get_theme()` instead of `get_current_theme()`
